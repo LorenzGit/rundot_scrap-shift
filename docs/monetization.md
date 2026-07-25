@@ -10,7 +10,7 @@ final catalog and disables the hidden private-host diagnostic bay.
 
 ## Product context
 
-- Game / version: SCRAP//SHIFT source and visible v0.10.4 public-release candidate
+- Game / version: SCRAP//SHIFT source and visible v0.10.4 on public RUN v1.1.9
 - Audience and content rating: Arcade players 10+; stylized machine destruction
 - Core loop and typical session: Three-minute arena-survival runs with immediate
   retries and build-defining upgrade cards

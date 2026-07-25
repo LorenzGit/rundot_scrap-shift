@@ -7,7 +7,7 @@ SCRAP//SHIFT is an endless pixel-art arena survival game built for
 touch and keyboard controls, and uses PixiJS 8 with a WebGPU-first renderer and
 WebGL fallback.
 
-[Play SCRAP//SHIFT on RUN](https://w.run/u/m46GgihAjGKA9VReKNzb/private)
+[Play SCRAP//SHIFT on RUN](https://w.run/lonu/scrapshift)
 
 ## Highlights
 
