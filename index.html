@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+        <meta name="theme-color" content="#241034" />
+        <meta name="color-scheme" content="dark" />
+        <link rel="icon" href="./thumbnail.jpg" type="image/jpeg" />
+        <title>SCRAP//SHIFT</title>
+        <style>
+            html,
+            body {
+                width: 100%;
+                height: 100%;
+                margin: 0;
+                overflow: hidden;
+                background: #241034;
+            }
+            #boot-cover {
+                position: fixed;
+                inset: 0;
+                z-index: 999;
+                display: grid;
+                place-items: center;
+                color: #fff3c4;
+                background:
+                    linear-gradient(180deg, #28103e 0 54%, #55176b 54% 100%),
+                    #28103e;
+                transition: opacity 180ms steps(4);
+            }
+            #boot-cover.hidden {
+                opacity: 0;
+                pointer-events: none;
+            }
+            .boot-panel {
+                width: min(76vw, 520px);
+                text-align: center;
+                font: 900 clamp(18px, 6vw, 42px) / 1 "Courier New", monospace;
+                letter-spacing: -0.08em;
+                text-shadow: 4px 4px 0 #160e2b;
+            }
+            .boot-stage {
+                position: relative;
+                width: min(270px, 58vw);
+                height: clamp(74px, 17vh, 112px);
+                margin: 0 auto 18px;
+                border-bottom: 8px solid #160e2b;
+                background:
+                    linear-gradient(90deg, transparent 0 8%, #4e1b63 8% 25%, transparent 25% 71%, #4e1b63 71% 91%, transparent 91%),
+                    linear-gradient(180deg, transparent 0 58%, #6b237e 58% 100%);
+                box-shadow: 0 5px 0 #b9ff4a;
+            }
+            .boot-runner {
+                position: absolute;
+                bottom: 7px;
+                left: 50%;
+                width: 44px;
+                height: 55px;
+                border: 6px solid #160e2b;
+                background: #ff9c38;
+                translate: -50% 0;
+                box-shadow: inset 0 0 0 4px #ffd15a;
+            }
+            .boot-runner::before {
+                position: absolute;
+                top: 7px;
+                left: 6px;
+                width: 29px;
+                height: 16px;
+                border: 4px solid #160e2b;
+                background: #6ff7ff;
+                box-shadow: inset -9px 0 0 #24526e;
+                content: "";
+            }
+            .boot-runner::after {
+                position: absolute;
+                right: -32px;
+                bottom: 7px;
+                width: 34px;
+                height: 10px;
+                border: 4px solid #160e2b;
+                background: #6ff7ff;
+                content: "";
+            }
+            .boot-shard,
+            .boot-shard::before {
+                position: absolute;
+                width: 12px;
+                height: 12px;
+                background: #b9ff4a;
+                rotate: 45deg;
+                box-shadow: 3px 3px 0 #160e2b;
+                content: "";
+            }
+            .boot-shard {
+                top: 20%;
+                left: 12%;
+            }
+            .boot-shard::before {
+                top: 120px;
+                left: 205px;
+            }
+            .boot-bolt {
+                position: absolute;
+                top: 34%;
+                right: 8%;
+                width: 40px;
+                height: 8px;
+                background: #ff85dc;
+                box-shadow: 3px 3px 0 #160e2b;
+            }
+            .boot-mark {
+                color: #b9ff4a;
+            }
+            .boot-track {
+                height: 12px;
+                margin-top: 22px;
+                border: 4px solid #160e2b;
+                background: #3c1b54;
+                box-shadow: 0 0 0 2px #fff3c4;
+            }
+            #boot-fill {
+                width: 4%;
+                height: 100%;
+                background: repeating-linear-gradient(90deg, #b9ff4a 0 12px, #6ff7ff 12px 20px);
+                transition: width 120ms steps(5);
+            }
+            .boot-copy {
+                margin: 14px 0 0;
+                font-size: 12px;
+                letter-spacing: 0.12em;
+                color: #ff85dc;
+            }
+            @media (orientation: portrait) {
+                .boot-panel {
+                    width: min(88vw, 420px);
+                    font-size: clamp(27px, 11vw, 44px);
+                }
+                .boot-stage {
+                    width: min(250px, 70vw);
+                    height: clamp(110px, 24vh, 170px);
+                }
+                .boot-runner {
+                    bottom: 9px;
+                    scale: 1.15;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div id="boot-cover" role="status" aria-live="polite">
+            <div class="boot-panel">
+                <div class="boot-stage" aria-hidden="true">
+                    <span class="boot-runner"></span>
+                    <span class="boot-shard"></span>
+                    <span class="boot-bolt"></span>
+                </div>
+                SCRAP<span class="boot-mark">//</span>SHIFT
+                <div class="boot-track" aria-hidden="true"><div id="boot-fill"></div></div>
+                <p id="boot-copy" class="boot-copy">WAKING THE JUNKYARD</p>
+            </div>
+        </div>
+
+        <main id="app" aria-label="SCRAP SHIFT game">
+            <div id="app-frame">
+                <div id="scene-host" aria-hidden="true"></div>
+                <button
+                    id="performance-hud"
+                    class="performance-hud hidden"
+                    type="button"
+                    aria-label="Hide performance counter"
+                >
+                    <strong id="performance-fps">-- FPS</strong>
+                    <span id="performance-frame">-- MS · -- P95</span>
+                    <small id="performance-detail">RENDERER · SIM -- · DRAW --</small>
+                    <small id="performance-renderer-reason">CHECKING GPU PATH</small>
+                </button>
+                <div id="tap-marker" class="tap-marker" aria-hidden="true">
+                    <span id="tap-knob" class="tap-knob"></span>
+                </div>
+                <div id="tap-tutorial" class="tap-tutorial pixel-frame" role="status">
+                    <span class="tap-hand" aria-hidden="true"></span>
+                    <strong>HOLD + DRAG ANYWHERE · RELEASE TO STOP</strong>
+                </div>
+
+                <section id="hud" class="hud hidden" aria-label="Run status">
+                    <div class="pilot-panel pixel-frame">
+                        <div class="pilot-face" aria-hidden="true">
+                            <span class="pilot-visor"></span>
+                        </div>
+                        <div class="pilot-bars">
+                            <div class="hud-label"><span>INTEGRITY</span><span id="hp-text">16/16</span></div>
+                            <div class="meter health-meter"><div id="hp-fill"></div></div>
+                            <div class="hud-score"><span>SCRAP</span><strong id="score-text">000000</strong></div>
+                        </div>
+                    </div>
+
+                    <div class="run-clock pixel-frame">
+                        <span id="wave-text">SURVIVE · W1</span>
+                        <strong id="time-text">00:00</strong>
+                    </div>
+
+                    <div id="loadout" class="loadout pixel-frame" aria-label="Power levels">
+                        <span class="power-chip power-blaster" title="Blaster"><b id="power-blaster">1</b></span>
+                        <span class="power-chip power-hook" title="Hook blade"><b id="power-hook">0</b></span>
+                        <span class="power-chip power-blades" title="Blade carousel"><b id="power-blades">0</b></span>
+                        <span class="power-chip power-bloom" title="Static bloom"><b id="power-bloom">0</b></span>
+                        <span class="power-chip power-bomb" title="Scrap bomb"><b id="power-bomb">0</b></span>
+                        <span class="power-chip power-arc" title="Arc chain"><b id="power-arc">0</b></span>
+                    </div>
+
+                    <button id="pause-button" class="icon-button pixel-button" type="button" aria-label="Pause game">
+                        <span aria-hidden="true"></span>
+                    </button>
+
+                    <div class="energy-wrap">
+                        <div class="energy-copy"><span id="level-text">LEVEL 1</span><span id="energy-text">0/8</span></div>
+                        <div class="meter energy-meter"><div id="energy-fill"></div></div>
+                    </div>
+
+                    <div class="combat-progress pixel-frame" aria-label="Combat rewards">
+                        <div class="mini-progress combo-progress">
+                            <span><b id="combo-text">COMBO 0</b><i id="multiplier-text">x1.00</i></span>
+                            <div class="micro-meter"><div id="combo-fill"></div></div>
+                        </div>
+                        <div class="mini-progress cache-progress">
+                            <span><b>CACHE</b><i id="cache-text">0/12</i></span>
+                            <div class="micro-meter"><div id="cache-fill"></div></div>
+                        </div>
+                        <div class="mini-progress threat-progress">
+                            <span><b>THREATS</b><i id="threat-text">1/11 · NEXT 3</i></span>
+                            <div class="micro-meter"><div id="threat-fill"></div></div>
+                        </div>
+                    </div>
+
+                    <div id="effect-tray" class="effect-tray" aria-label="Active powerups">
+                        <span id="effect-overdrive" class="effect-chip effect-overdrive hidden">OVERDRIVE <b>0</b></span>
+                        <span id="effect-vacuum" class="effect-chip effect-vacuum hidden">VACUUM <b>0</b></span>
+                        <span id="effect-shield" class="effect-chip effect-shield hidden">SHIELD <b>0</b></span>
+                        <span id="effect-frenzy" class="effect-chip effect-frenzy hidden">FRENZY <b>0</b></span>
+                        <span id="effect-freeze" class="effect-chip effect-freeze hidden">CRYO <b>0</b></span>
+                    </div>
+                </section>
+
+                <section id="touch-controls" class="touch-controls hidden" aria-label="Touch controls">
+                    <button id="dash-button" class="dash-button pixel-button" type="button">
+                        <span id="dash-cooldown-fill" class="dash-cooldown-fill" aria-hidden="true"></span>
+                        <span class="dash-icon" aria-hidden="true"></span>
+                        <span>BURST</span>
+                    </button>
+                </section>
+
+                <section id="menu-screen" class="screen menu-screen active" aria-labelledby="game-title">
+                    <div class="menu-art" aria-hidden="true">
+                        <div class="menu-runner"><span></span></div>
+                        <i class="menu-bolt bolt-one"></i><i class="menu-bolt bolt-two"></i>
+                        <i class="menu-hook hook-one"></i><i class="menu-hook hook-two"></i>
+                    </div>
+                    <div class="menu-content">
+                        <p class="eyebrow">THE JUNKYARD BITES BACK</p>
+                        <h1 id="game-title">SCRAP<span>//</span>SHIFT</h1>
+                        <p class="menu-pitch">SURVIVE FOREVER. BREAK THE HORDES. BUILD A BEAUTIFUL MESS.</p>
+                        <p class="orientation-copy"><span>PORTRAIT</span><i aria-hidden="true"></i><span>LANDSCAPE</span></p>
+                        <div class="menu-actions">
+                            <button id="play-button" class="pixel-button primary-button" type="button">START RUN</button>
+                            <button id="daily-button" class="pixel-button reward-button" type="button">
+                                DAILY DROP <b id="daily-badge" class="menu-badge">!</b>
+                            </button>
+                            <button id="skins-button" class="pixel-button skin-button" type="button">OUTFITTER</button>
+                            <button id="settings-button" class="pixel-button secondary-button" type="button">SETTINGS</button>
+                        </div>
+                        <p class="control-hint">HOLD + DRAG ANYWHERE · RELEASE TO STOP · WASD / ARROWS · SPACE TO BURST</p>
+                        <div class="records pixel-frame" aria-label="Personal records">
+                            <span>BEST <b id="best-score">000000</b></span>
+                            <span>TOP LEVEL <b id="best-level">1</b></span>
+                            <span>RUNS <b id="total-runs">0</b></span>
+                            <span>KILLS <b id="lifetime-kills">0</b></span>
+                            <span>SALVAGE <b id="lifetime-scrap">0</b></span>
+                            <span>WALLET <b id="wallet-salvage">0</b></span>
+                            <span>CACHES <b id="lifetime-caches">0</b></span>
+                        </div>
+                    </div>
+                    <span id="save-badge" class="save-badge">LOCAL SAVE</span>
+                    <button id="version-label" class="version-label" type="button" aria-label="Build version">v0.0.0</button>
+                </section>
+
+                <section id="daily-screen" class="screen collection-screen" aria-labelledby="daily-title">
+                    <div class="collection-panel daily-panel pixel-frame">
+                        <header class="collection-header">
+                            <div>
+                                <p class="eyebrow">NON-PUNITIVE 7-DAY LOOP</p>
+                                <h2 id="daily-title">DAILY DROP</h2>
+                            </div>
+                            <span class="wallet-chip"><b id="daily-wallet">0</b> SALVAGE</span>
+                        </header>
+                        <p class="collection-copy">
+                            MISS A DAY? NOTHING RESETS. CLAIMS ADVANCE WHEN YOU RETURN.
+                        </p>
+                        <div id="daily-grid" class="daily-grid" aria-label="Seven day reward track"></div>
+                        <div class="claim-strip">
+                            <span id="daily-authority">LOCAL PREVIEW · NON-AUTHORITATIVE</span>
+                            <strong id="daily-next">TODAY'S DROP IS READY</strong>
+                        </div>
+                        <button id="daily-claim" class="pixel-button primary-button" type="button">CLAIM TODAY</button>
+                        <button id="daily-back" class="pixel-button secondary-button" type="button">BACK</button>
+                    </div>
+                </section>
+
+                <section id="skins-screen" class="screen collection-screen" aria-labelledby="skins-title">
+                    <div class="collection-panel skins-panel pixel-frame">
+                        <header class="collection-header">
+                            <div>
+                                <p class="eyebrow">PILOT LOADOUTS</p>
+                                <h2 id="skins-title">OUTFITTER</h2>
+                            </div>
+                            <span class="wallet-chip"><b id="skins-wallet">0</b> SALVAGE</span>
+                        </header>
+                        <p class="collection-copy">
+                            EARN COSMETICS OR CHOOSE A PERMANENT UNLOCK. PURCHASES NEVER ADD COMBAT POWER.
+                        </p>
+                        <section id="storefront-offers" class="storefront-offers hidden" aria-labelledby="offers-title">
+                            <div class="offer-heading">
+                                <span>OPTIONAL · PERMANENT</span>
+                                <strong id="offers-title">UNLOCKS</strong>
+                            </div>
+                            <div id="offer-grid" class="offer-grid" aria-label="Permanent unlocks"></div>
+                        </section>
+                        <div id="skin-grid" class="skin-grid" aria-label="Available pilot skins"></div>
+                        <button id="skins-back" class="pixel-button secondary-button" type="button">BACK</button>
+                    </div>
+                </section>
+
+                <section
+                    id="monetization-test-screen"
+                    class="screen collection-screen"
+                    aria-labelledby="monetization-test-title"
+                >
+                    <div class="collection-panel monetization-test-panel pixel-frame">
+                        <header class="collection-header">
+                            <div>
+                                <p class="eyebrow">PRIVATE BUILD · REAL HOST CHECKS</p>
+                                <h2 id="monetization-test-title">MONETIZATION TEST BAY</h2>
+                            </div>
+                            <span id="monetization-test-environment" class="test-environment">CHECKING</span>
+                        </header>
+                        <p class="test-warning">
+                            TEST PURCHASES USE REAL RB AND PERSIST. RUN CHECKOUT ALWAYS SHOWS THE PRICE BEFORE CONFIRMATION.
+                        </p>
+                        <div class="test-status-grid" aria-label="RUN monetization capability checks">
+                            <article><span>RUN HOST</span><strong id="test-host-status">CHECKING</strong></article>
+                            <article><span>LIVEOPS</span><strong id="test-liveops-status">CHECKING</strong></article>
+                            <article><span>SHOP CATALOG</span><strong id="test-shop-status">CHECKING</strong></article>
+                            <article><span>ENTITLEMENTS</span><strong id="test-entitlements-status">CHECKING</strong></article>
+                            <article><span>AD API</span><strong id="test-ads-status">CHECKING</strong></article>
+                            <article><span>REWARDED FILL</span><strong id="test-ad-fill-status">CHECKING</strong></article>
+                            <article>
+                                <span>INTERSTITIAL FILL</span><strong id="test-interstitial-fill-status">CHECKING</strong>
+                            </article>
+                        </div>
+                        <div class="test-details pixel-frame">
+                            <span>CONFIG <b id="test-config-id">NONE</b></span>
+                            <span>CATALOG <b id="test-catalog-id">NONE</b></span>
+                            <span>ITEMS <b id="test-catalog-count">0</b></span>
+                            <span>OWNED ENTITLEMENTS <b id="test-entitlement-count">0</b></span>
+                        </div>
+                        <article class="test-action-card pixel-frame">
+                            <div>
+                                <span>PURCHASE TEST</span>
+                                <strong id="test-product-name">CHECKING CATALOG</strong>
+                                <small id="test-product-state">PRICE AND OWNERSHIP PENDING</small>
+                            </div>
+                            <button id="test-purchase-button" class="pixel-button skin-buy-button" type="button" disabled>
+                                TEST PURCHASE
+                            </button>
+                        </article>
+                        <article class="test-action-card pixel-frame">
+                            <div>
+                                <span>INTERSTITIAL TEST</span>
+                                <strong>RESULTS-BREAK VIDEO · NO REWARD</strong>
+                                <small>NORMAL PLAY ONLY TRIGGERS THIS AFTER AN ELIGIBLE RESULTS EXIT</small>
+                            </div>
+                            <button id="test-interstitial-button" class="pixel-button ad-button" type="button" disabled>
+                                TEST RESULTS AD
+                            </button>
+                        </article>
+                        <article class="test-action-card pixel-frame">
+                            <div>
+                                <span>REWARDED VIDEO TEST</span>
+                                <strong>CONFIRMED COMPLETION · +1 SALVAGE</strong>
+                                <small>NO COMPLETION MEANS NO REWARD</small>
+                            </div>
+                            <button id="test-ad-button" class="pixel-button ad-button" type="button" disabled>
+                                TEST REWARDED VIDEO
+                            </button>
+                        </article>
+                        <p id="monetization-test-log" class="test-log" role="status" aria-live="polite">
+                            REFRESH TO CHECK THE PRIVATE RUN HOST.
+                        </p>
+                        <button id="monetization-test-refresh" class="pixel-button primary-button" type="button">
+                            REFRESH CHECKS
+                        </button>
+                        <button id="monetization-test-back" class="pixel-button secondary-button" type="button">
+                            BACK
+                        </button>
+                    </div>
+                </section>
+
+                <section id="settings-screen" class="screen panel-screen" aria-labelledby="settings-title">
+                    <div class="settings-panel pixel-frame">
+                        <p class="eyebrow">WORKBENCH</p>
+                        <h2 id="settings-title">SETTINGS</h2>
+                        <label class="setting-row">
+                            <span>MUSIC</span>
+                            <input id="music-enabled" type="checkbox" />
+                        </label>
+                        <label class="setting-row slider-row">
+                            <span>MUSIC LEVEL</span>
+                            <input id="music-volume" type="range" min="0" max="1" step="0.05" />
+                        </label>
+                        <label class="setting-row">
+                            <span>SFX</span>
+                            <input id="sfx-enabled" type="checkbox" />
+                        </label>
+                        <label class="setting-row slider-row">
+                            <span>SFX LEVEL</span>
+                            <input id="sfx-volume" type="range" min="0" max="1" step="0.05" />
+                        </label>
+                        <label class="setting-row">
+                            <span>HAPTICS</span>
+                            <input id="haptics-enabled" type="checkbox" />
+                        </label>
+                        <label class="setting-row">
+                            <span>REDUCED MOTION</span>
+                            <input id="reduced-motion" type="checkbox" />
+                        </label>
+                        <label class="setting-row">
+                            <span>SHOW FPS COUNTER</span>
+                            <input id="fps-counter" type="checkbox" />
+                        </label>
+                        <article id="settings-noads-offer" class="settings-offer pixel-frame hidden">
+                            <i class="offer-icon offer-icon-noads" aria-hidden="true"></i>
+                            <div>
+                                <span>PERMANENT OPTION</span>
+                                <strong>AD-FREE FOREVER</strong>
+                                <small>REMOVES RESULTS-BREAK ADS. OPTIONAL REWARD VIDEOS STAY AVAILABLE.</small>
+                            </div>
+                            <button id="settings-noads-button" class="pixel-button skin-buy-button" type="button" disabled>
+                                SYNCING OFFER
+                            </button>
+                        </article>
+                        <button id="settings-back" class="pixel-button primary-button" type="button">BACK</button>
+                    </div>
+                </section>
+
+                <section id="upgrade-screen" class="screen upgrade-screen" aria-labelledby="upgrade-title">
+                    <p class="eyebrow">ENERGY SPIKE</p>
+                    <h2 id="upgrade-title">CHOOSE YOUR POWER</h2>
+                    <div id="upgrade-cards" class="upgrade-cards"></div>
+                </section>
+
+                <section id="pause-screen" class="screen panel-screen" aria-labelledby="pause-title">
+                    <div class="pause-panel pixel-frame">
+                        <p class="eyebrow">TIME FROZEN</p>
+                        <h2 id="pause-title">PAUSED</h2>
+                        <button id="resume-button" class="pixel-button primary-button" type="button">RESUME</button>
+                        <button id="pause-settings-button" class="pixel-button secondary-button" type="button">SETTINGS</button>
+                        <button id="quit-run-button" class="pixel-button danger-button" type="button">END RUN</button>
+                    </div>
+                </section>
+
+                <section id="results-screen" class="screen panel-screen" aria-labelledby="results-title">
+                    <div class="results-panel pixel-frame">
+                        <p id="results-kicker" class="eyebrow">SIGNAL LOST</p>
+                        <h2 id="results-title">RUN OVER</h2>
+                        <div class="results-score">
+                            <span>SCORE</span>
+                            <strong id="results-score">000000</strong>
+                        </div>
+                        <div class="results-grid">
+                            <span>TIME <b id="results-time">00:00</b></span>
+                            <span>LEVEL <b id="results-level">1</b></span>
+                            <span>KILLS <b id="results-kills">0</b></span>
+                            <span>SCRAP <b id="results-scrap">0</b></span>
+                            <span>MAX COMBO <b id="results-combo">0</b></span>
+                            <span>CACHES <b id="results-caches">0</b></span>
+                            <span>TREASURES <b id="results-treasures">0</b></span>
+                        </div>
+                        <div class="reward-ribbon">
+                            <span>RUN REWARD</span>
+                            <strong id="results-reward">+0 SCRAP</strong>
+                        </div>
+                        <div id="results-ad-offer" class="results-ad-offer pixel-frame hidden">
+                            <div>
+                                <span>BONUS SALVAGE</span>
+                                <strong id="results-ad-status">OPTIONAL VIDEO REWARD</strong>
+                            </div>
+                        <button id="results-ad-button" class="pixel-button ad-button" type="button" disabled>
+                                WATCH VIDEO · +0 SALVAGE
+                            </button>
+                        </div>
+                        <p id="results-break-note" class="results-break-note">ADS ONLY APPEAR BETWEEN ELIGIBLE RUNS</p>
+                        <button id="retry-button" class="pixel-button primary-button" type="button">RUN IT BACK</button>
+                        <button id="menu-button" class="pixel-button secondary-button" type="button">MAIN MENU</button>
+                    </div>
+                </section>
+
+                <div id="toast" class="toast" role="status" aria-live="polite"></div>
+                <div id="milestone" class="milestone" role="status" aria-live="polite">
+                    <i id="milestone-card" class="milestone-card hidden" aria-hidden="true"><b></b></i>
+                    <div class="milestone-copy">
+                        <span id="milestone-kicker">REWARD READY</span>
+                        <strong id="milestone-title">CACHE ONLINE</strong>
+                    </div>
+                </div>
+                <div id="flow-wipe" class="flow-wipe" aria-hidden="true"></div>
+            </div>
+        </main>
+
+        <script type="module" src="/src/main.ts"></script>
+    </body>
+</html>

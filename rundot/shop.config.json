@@ -1,0 +1,88 @@
+{
+  "items": [
+    {
+      "itemId": "scrap_shift_blade_skin_foundry",
+      "name": "Foundry + Void Skin Pack",
+      "description": "Permanently unlocks the Foundry Gold and Void Chrome pilot-and-blade cosmetic palettes. No combat power.",
+      "category": "non_consumable",
+      "price": { "type": "bucks", "value": "199" },
+      "entitlements": [
+        {
+          "entitlementId": "scrap_shift_blade_skin_foundry",
+          "quantity": 1,
+          "consumable": false
+        }
+      ],
+      "assets": {},
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": ["scrap-shift", "cosmetic", "permanent"],
+      "sortOrder": 2,
+      "releasedAt": null,
+      "expiresAt": null
+    },
+    {
+      "itemId": "scrap_shift_no_interstitials",
+      "name": "Ad-Free Forever",
+      "description": "Permanently removes mandatory results-break interstitial ads. Optional rewarded videos remain available.",
+      "category": "non_consumable",
+      "price": { "type": "bucks", "value": "299" },
+      "entitlements": [
+        {
+          "entitlementId": "scrap_shift_no_interstitials",
+          "quantity": 1,
+          "consumable": false
+        }
+      ],
+      "assets": {},
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": ["scrap-shift", "ad-free", "permanent"],
+      "sortOrder": 3,
+      "releasedAt": null,
+      "expiresAt": null
+    },
+    {
+      "itemId": "scrap_shift_founder_bundle",
+      "name": "Founder Bundle",
+      "description": "Permanently unlocks Ad-Free Forever, Foundry Gold, Void Chrome, and the exclusive First Shifter cosmetic palette.",
+      "category": "bundle",
+      "price": { "type": "bucks", "value": "399" },
+      "entitlements": [
+        {
+          "entitlementId": "scrap_shift_no_interstitials",
+          "quantity": 1,
+          "consumable": false
+        },
+        {
+          "entitlementId": "scrap_shift_blade_skin_foundry",
+          "quantity": 1,
+          "consumable": false
+        },
+        {
+          "entitlementId": "scrap_shift_pilot_skin_founder",
+          "quantity": 1,
+          "consumable": false
+        }
+      ],
+      "assets": {},
+      "unique": true,
+      "active": true,
+      "regions": [],
+      "refundEligible": true,
+      "refundWindowHours": 24,
+      "tags": ["scrap-shift", "founder", "cosmetic", "ad-free", "permanent"],
+      "sortOrder": 1,
+      "releasedAt": null,
+      "expiresAt": null
+    }
+  ],
+  "sales": [],
+  "collections": []
+}
