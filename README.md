@@ -9,6 +9,8 @@ WebGL fallback.
 
 [Play SCRAP//SHIFT on RUN](https://w.run/lonu/scrapshift)
 
+![SCRAP//SHIFT portrait gameplay with orbiting blades, machine hordes, powerups, and pickups](docs/media/scrap-shift-gameplay.gif)
+
 ## Highlights
 
 - Endless, infinitely streaming scrapyard with violet, rust, toxic, and steel
