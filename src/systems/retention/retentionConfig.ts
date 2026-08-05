@@ -54,7 +54,10 @@ export const returnReminders = createReturnReminders({
     schedule: (input) => rearmLocalNotification(input),
     cancel: (id) => cancelLocalNotification(id),
     resolveLaunch: () => resolveLaunchIntent(),
-    isEnabled: () => notificationsGranted,
+    // The cached permission annotates the scheduled event; it must never gate
+    // scheduling. A stale or failed boot probe would otherwise silence the
+    // whole cadence for the session, and a mid-session grant would never arm.
+    permissionHint: () => notificationsGranted,
     track: (event, payload) => analytics.event(event, payload),
 });
 
