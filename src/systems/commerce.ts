@@ -17,6 +17,7 @@ import {
 } from "./monetization/purchaseCoordinator.ts";
 import { saveSystem } from "./save.ts";
 
+import { analytics } from "./analytics/analyticsConfig.ts";
 export interface SkinCommerceView {
     visible: boolean;
     owned: boolean;
@@ -296,8 +297,10 @@ export async function purchaseProduct(
         runtime.controls.purchasesEnabled &&
         runtime.controls.products[productId]?.enabled === true;
     if (!enabled || !definition || !item || !getRunCapabilities().shop || getRunCapabilities().mock) return null;
+    analytics.funnelStep("purchase", 3);
     recordAnalytics("checkout_started", { productId, placement });
     const outcome = await purchaseCoordinator.purchase(productId, definition.catalogItemId);
+    analytics.funnelStep("purchase", 4);
     recordAnalytics("checkout_result", { productId, placement, result: outcome.status });
     return outcome;
 }

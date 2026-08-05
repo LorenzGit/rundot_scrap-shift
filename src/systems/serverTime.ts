@@ -67,3 +67,18 @@ export function trustedTimeGate(): {
         label: authoritative ? "TRUSTED RUN TIME" : "LOCAL PREVIEW · NON-AUTHORITATIVE",
     };
 }
+
+/**
+ * True when `day` is exactly one calendar day after `previous`.
+ *
+ * Both are `localDayKey` strings (YYYY-MM-DD), parsed as UTC so the comparison
+ * cannot be skewed by the host's timezone — only the difference matters, and
+ * both keys were produced by the same clock.
+ */
+export function isConsecutiveDay(previous: string | null, day: string): boolean {
+    if (!previous) return false;
+    const a = Date.parse(`${previous}T00:00:00Z`);
+    const b = Date.parse(`${day}T00:00:00Z`);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+    return b - a === 86_400_000;
+}

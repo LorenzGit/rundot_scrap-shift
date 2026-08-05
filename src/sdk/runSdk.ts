@@ -201,9 +201,12 @@ export async function isRewardedAdReady(): Promise<boolean> {
 }
 
 export async function showRewardedAd(placementId: string, placementName: string): Promise<boolean> {
+    // Offered vs complete: one without the other cannot separate a weak reward
+    // from missing inventory. Emitted here so every placement is covered once.
+    void recordAnalytics("rewarded_ad_offered", { ad_display_id: placementId });
     if (!capabilities.ads) return false;
     try {
-        return await withTimeout(
+        const completed = await withTimeout(
             RundotGameAPI.ads.showRewardedAdAsync({
                 adDisplayId: placementId,
                 adDisplayName: placementName,
@@ -211,6 +214,10 @@ export async function showRewardedAd(placementId: string, placementName: string)
             120_000,
             "ads.showRewardedAdAsync",
         );
+        // Only a confirmed completion earned the reward — a falsy result covers
+        // both "no ad shown" and "player closed early".
+        if (completed) void recordAnalytics("rewarded_ad_complete", { ad_display_id: placementId });
+        return completed;
     } catch (error) {
         console.warn("[runSdk] rewarded ad unavailable", error);
         return false;
@@ -232,6 +239,8 @@ export async function isInterstitialAdReady(): Promise<boolean> {
 }
 
 export async function showInterstitialAd(placementId: string, placementName: string): Promise<boolean> {
+    // Interstitial load is the number to weigh against D1 when tuning ads.
+    void recordAnalytics("interstitial_shown", { ad_display_id: placementId });
     if (!capabilities.ads) return false;
     try {
         return await withTimeout(
@@ -321,6 +330,17 @@ export function recordAnalytics(eventName: string, payload: Record<string, unkno
     void RundotGameAPI.analytics.recordCustomEvent(eventName, payload).catch(() => undefined);
 }
 
+/**
+ * Register an ordered funnel step. Distinct from recordAnalytics: a custom
+ * event is a point in time, whereas a funnel step belongs to a named, ordered
+ * sequence the dashboard can draw a drop-off curve for. Step numbers and names
+ * are frozen once deployed.
+ */
+export function recordFunnelStep(step: number, name: string, funnel: string, funnelOrder = 0): void {
+    if (!capabilities.analytics) return;
+    void RundotGameAPI.analytics.trackFunnelStep(step, name, funnel, funnelOrder).catch(() => undefined);
+}
+
 export interface LifecycleConfig {
     onPause?: () => void;
     onResume?: () => void;
@@ -370,5 +390,92 @@ export async function requestHostExit(): Promise<boolean> {
         );
     } catch {
         return false;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Return reminders. This game shipped with no way to reach a player after they
+// left, which is the single most common cause of a game that onboards fine and
+// still has no D1. Every call is capability-gated and swallowing: a host with
+// no notification support must not break boot.
+// ---------------------------------------------------------------------------
+
+function notificationsAvailable(): boolean {
+    return typeof (RundotGameAPI as unknown as Record<string, unknown>).notifications === "object";
+}
+
+/** True once the player has granted local-notification permission. */
+export async function notificationsEnabled(): Promise<boolean> {
+    if (!notificationsAvailable()) return false;
+    try {
+        return (await RundotGameAPI.notifications.isLocalNotificationsEnabled()) === true;
+    } catch {
+        return false;
+    }
+}
+
+/** Ask for (or revoke) local-notification permission. Must be user-initiated. */
+export async function setNotificationPreference(enabled: boolean): Promise<boolean> {
+    if (!notificationsAvailable()) return false;
+    try {
+        await RundotGameAPI.notifications.setLocalNotificationsEnabled(enabled);
+        return (await RundotGameAPI.notifications.isLocalNotificationsEnabled()) === enabled;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Cancel-then-schedule a local notification, so re-arming re-anchors the timer
+ * instead of stacking a second copy. Returns true only when the host confirms.
+ */
+export async function rearmLocalNotification(input: {
+    id: string;
+    title: string;
+    body: string;
+    delaySeconds: number;
+}): Promise<boolean> {
+    if (!notificationsAvailable()) return false;
+    try {
+        await RundotGameAPI.notifications.cancelNotification(input.id);
+        const result = await RundotGameAPI.notifications.submitMessageAsync({
+            channels: ["local"],
+            title: input.title,
+            body: input.body,
+            delaySeconds: Math.max(60, input.delaySeconds),
+            notificationId: input.id,
+            collapseKey: input.id,
+            // Rides back as LaunchIntent.params on tap — without it a
+            // notification-driven return looks identical to an organic one.
+            payload: { reminder_id: input.id },
+        });
+        return result.results.some((channel) => channel.channel === "local" && channel.status === "scheduled");
+    } catch {
+        return false;
+    }
+}
+
+/** Cancel a scheduled reminder once the thing it promised has been done. */
+export async function cancelLocalNotification(id: string): Promise<void> {
+    if (!notificationsAvailable()) return;
+    try {
+        await RundotGameAPI.notifications.cancelNotification(id);
+    } catch {
+        // a reminder that will not cancel must not break the beat that
+        // completed the task it was promising
+    }
+}
+
+/**
+ * How this session was launched. `timed_out` is treated as unknown rather than
+ * organic, so notification attribution never over-counts cold starts.
+ */
+export async function resolveLaunchIntent(): Promise<{ kind: string; params: Record<string, string> } | null> {
+    try {
+        const intent = await RundotGameAPI.app.resolveLaunchIntent({ maxWaitMs: 800 });
+        if (!intent || intent.kind === "timed_out") return null;
+        return { kind: intent.kind, params: intent.params ?? {} };
+    } catch {
+        return null;
     }
 }

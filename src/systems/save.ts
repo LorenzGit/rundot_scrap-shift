@@ -9,6 +9,8 @@ import {
 import type { SkinId } from "./cosmetics.ts";
 import type { PendingPurchaseIntent } from "./monetization/purchaseCoordinator.ts";
 
+import { analytics } from "./analytics/analyticsConfig.ts";
+import { isConsecutiveDay } from "./serverTime.ts";
 export {
     SAVE_VERSION,
     parseGameSave,
@@ -103,6 +105,16 @@ export const saveSystem = {
 
     recordRun(score: number, elapsed: number, level: number, kills: number, scrap: number, cachesOpened: number): void {
         const salvageReward = nonNegativeInteger(scrap);
+        // Read BEFORE the write below: once the high-water mark is overwritten,
+        // "was this a record?" is unanswerable. A beaten best is the progression
+        // beat that predicts a next session, which run_ended alone cannot show.
+        if (Math.floor(level) > state.records.highestLevel) {
+            analytics.event("milestone_reached", {
+                milestone: "deepest_wave",
+                value: Math.floor(level),
+                previous: state.records.highestLevel,
+            });
+        }
         state = {
             ...state,
             records: {
@@ -219,6 +231,13 @@ export const saveSystem = {
             dailyRewards: {
                 lastClaimDay: input.day,
                 totalClaims: state.dailyRewards.totalClaims + 1,
+                // Consecutive only: a gap resets to 1 (this claim), never 0, so
+                // a returning player is never told their streak is "zero" on the
+                // day they came back. Days are the trusted-time day key, so a
+                // device clock change cannot inflate it.
+                streak: isConsecutiveDay(state.dailyRewards.lastClaimDay, input.day)
+                    ? state.dailyRewards.streak + 1
+                    : 1,
                 claimIds: [...state.dailyRewards.claimIds, claimId].slice(-90),
             },
         };

@@ -417,7 +417,11 @@ export class UiController {
             tile.append(day, icon, label, state);
             grid.appendChild(tile);
         });
-        element("daily-authority").textContent = view.authorityLabel;
+        // Show the streak, not just the schedule: the number a player is
+        // protecting is what makes them come back tomorrow, and it is what the
+        // 24h reminder promises.
+        element("daily-authority").textContent =
+            view.streak > 1 ? `${view.streak} DAY STREAK · ${view.authorityLabel}` : view.authorityLabel;
         element("daily-next").textContent = view.nextLabel;
         const claim = element<HTMLButtonElement>("daily-claim");
         claim.disabled = !view.claimable;

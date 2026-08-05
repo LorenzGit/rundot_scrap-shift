@@ -29,6 +29,12 @@ export interface GameProgress {
 export interface DailyRewardSave {
     lastClaimDay: string | null;
     totalClaims: number;
+    /**
+     * CONSECUTIVE days claimed, distinct from totalClaims (which never resets).
+     * A streak is what makes a return reward escalate and what the 24h reminder
+     * can honestly promise; a lifetime count cannot do either.
+     */
+    streak: number;
     claimIds: string[];
 }
 
@@ -98,6 +104,7 @@ export function createDefaultGameSave(reducedMotion: boolean): GameSaveV5 {
         dailyRewards: {
             lastClaimDay: null,
             totalClaims: 0,
+            streak: 0,
             claimIds: [],
         },
         monetization: {
@@ -222,6 +229,9 @@ export function parseGameSave(
                         ? candidate.dailyRewards.lastClaimDay
                         : null,
                 totalClaims: nonNegativeInteger(candidate.dailyRewards?.totalClaims),
+                // Absent on saves written before streaks existed; 0 is correct
+                // there — the next claim starts the first streak.
+                streak: nonNegativeInteger(candidate.dailyRewards?.streak),
                 claimIds: Array.isArray(candidate.dailyRewards?.claimIds)
                     ? candidate.dailyRewards.claimIds.filter((id): id is string => typeof id === "string").slice(-90)
                     : [],

@@ -1,6 +1,6 @@
 {
   "name": "scrap-shift",
-  "version": "0.10.5",
+  "version": "1.1.10",
   "description": "A neon pixel-art arena survival shooter for RUN.world.",
   "private": true,
   "type": "module",

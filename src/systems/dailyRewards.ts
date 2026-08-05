@@ -7,6 +7,8 @@ import {
 } from "./dailyRewardsModel.ts";
 import { saveSystem } from "./save.ts";
 import { formatDailyCountdown, msUntilNextLocalMidnight, serverNow, trustedTimeGate } from "./serverTime.ts";
+import { recordAnalytics } from "../sdk/runSdk.ts";
+import { returnReminders } from "./retention/retentionConfig.ts";
 
 export { DAILY_REWARDS, type DailyRewardDefinition } from "./dailyRewardsModel.ts";
 
@@ -16,6 +18,8 @@ export interface DailyRewardsView {
     rewards: readonly DailyRewardDefinition[];
     currentIndex: number;
     totalClaims: number;
+    /** Consecutive days claimed — what the reminder copy can honestly promise. */
+    streak: number;
     claimedToday: boolean;
     claimable: boolean;
     authorityLabel: string;
@@ -31,6 +35,7 @@ export function dailyRewardsView(): DailyRewardsView {
         rewards: DAILY_REWARDS,
         currentIndex: dailyRewardIndex(state.dailyRewards.totalClaims),
         totalClaims: state.dailyRewards.totalClaims,
+        streak: state.dailyRewards.streak,
         claimedToday,
         claimable: gate.ready && !claimedToday && !claimInFlight,
         authorityLabel: gate.label,
@@ -73,6 +78,15 @@ export async function claimDailyReward(): Promise<{
         return { ok: false, message: "SAVE FAILED · REWARD ROLLED BACK" };
     }
     claimInFlight = false;
+    const after = saveSystem.get().dailyRewards;
+    recordAnalytics("daily_reward_claimed", {
+        streak: after.streak,
+        total_claims: after.totalClaims,
+        salvage: reward.salvage + fallbackSalvage,
+    });
+    // Kill switch: the 24h reminder promises this drop; pinging about a reward
+    // the player just took is how a useful notification becomes a muted one.
+    void returnReminders.cancel("d1");
     if (alreadyOwnSkin) return { ok: true, message: `DUPLICATE CONVERTED · +${reward.salvage + 500} SALVAGE` };
     if (reward.skinId) return { ok: true, message: `${reward.label} UNLOCKED`, skinId: reward.skinId };
     return { ok: true, message: `+${reward.salvage} SALVAGE` };

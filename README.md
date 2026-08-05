@@ -2,6 +2,8 @@
 
 ![SCRAP//SHIFT pixel-art hero fighting a machine swarm](public/thumbnail.jpg)
 
+![SCRAP//SHIFT gameplay: the hero cutting through a machine horde mid-run](docs/screenshots/gameplay.png)
+
 SCRAP//SHIFT is an endless pixel-art arena survival game built for
 [RUN.world](https://run.world/). It plays in portrait and landscape, supports
 touch and keyboard controls, and uses PixiJS 8 with a WebGPU-first renderer and
