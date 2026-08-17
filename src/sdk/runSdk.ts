@@ -43,22 +43,31 @@ function namespaceAvailable(name: string): boolean {
     return typeof (RundotGameAPI as unknown as Record<string, unknown>)[name] === "object";
 }
 
+/**
+ * Haptics support comes from DeviceInfo, and the trigger lives on the API
+ * root. Read LIVE at every call site that acts on it: `enabled` reflects the
+ * player's system setting, which can change mid-session, and a cached false
+ * at boot must never gate a later action.
+ */
+function hapticsAvailableNow(): boolean {
+    if (!ready) return false;
+    try {
+        const device = RundotGameAPI.system.getDevice();
+        return device?.haptics?.supported === true && device?.haptics?.enabled === true;
+    } catch {
+        return false;
+    }
+}
+
 function snapshotCapabilities(): RunCapabilities {
     if (!ready) return OFFLINE_CAPABILITIES;
     const environment = RundotGameAPI._environmentData?.capabilities;
-    let haptics = false;
-    try {
-        const device = RundotGameAPI.system.getDevice();
-        haptics = device?.haptics?.supported === true && device?.haptics?.enabled === true;
-    } catch {
-        haptics = false;
-    }
     return {
         host: true,
         mock: RundotGameAPI.isMock(),
         storage: namespaceAvailable("appStorage"),
         analytics: namespaceAvailable("analytics"),
-        haptics,
+        haptics: hapticsAvailableNow(),
         ads: namespaceAvailable("ads") && environment?.ads !== false,
         liveops: namespaceAvailable("liveops"),
         shop: namespaceAvailable("shop") && environment?.purchases === true,
@@ -67,6 +76,16 @@ function snapshotCapabilities(): RunCapabilities {
 }
 
 export function getRunCapabilities(): Readonly<RunCapabilities> {
+    return capabilities;
+}
+
+/**
+ * Re-read host capabilities. Wired to onAwake (the SDK's "refresh stale data"
+ * hook) so a session that started before a grant or attach does not stay
+ * frozen on its boot snapshot.
+ */
+export function refreshRunCapabilities(): Readonly<RunCapabilities> {
+    capabilities = snapshotCapabilities();
     return capabilities;
 }
 
@@ -98,8 +117,34 @@ export async function initSdk(): Promise<boolean> {
     } while (performance.now() < deadline);
 
     capabilities = snapshotCapabilities();
-    if (!ready) console.info("[runSdk] RUN host unavailable; local fallbacks active");
+    if (!ready) {
+        console.info("[runSdk] RUN host unavailable; local fallbacks active");
+        // Inside an iframe the host is expected — a cold WebView can simply be
+        // slower than the bounded handshake. Keep watching so a late attach
+        // upgrades this session instead of stranding it offline until relaunch.
+        if (embedded) watchForLateHostAttach();
+    }
     return ready;
+}
+
+function watchForLateHostAttach(): void {
+    const deadline = performance.now() + 30000;
+    const watcher = window.setInterval(() => {
+        try {
+            if (RundotGameAPI.isAvailable() || RundotGameAPI.isMock()) {
+                window.clearInterval(watcher);
+                ready = true;
+                capabilities = snapshotCapabilities();
+                applyRunSafeArea();
+                console.info("[runSdk] RUN host attached after the boot handshake; capabilities refreshed");
+                return;
+            }
+        } catch {
+            window.clearInterval(watcher);
+            return;
+        }
+        if (performance.now() >= deadline) window.clearInterval(watcher);
+    }, 500);
 }
 
 export function applyRunSafeArea(): void {
@@ -143,6 +188,34 @@ export function bindRunSafeArea(): void {
         },
         { passive: true },
     );
+}
+
+/**
+ * Submits a finished run's score to the default leaderboard.
+ *
+ * The boards ship configured for every RUN game; nothing here ever submitted,
+ * so they read as "zero scored players". Fire-and-forget, and never fabricates
+ * acceptance — a rejected or unavailable submit returns null.
+ */
+export async function submitRunScore(score: number, durationSeconds: number): Promise<number | null> {
+    const api = RundotGameAPI as unknown as Record<string, unknown>;
+    if (typeof api.leaderboard !== "object" || api.leaderboard === null || score <= 0) return null;
+    try {
+        const result = await withTimeout(
+            RundotGameAPI.leaderboard.submitScore({
+                score: Math.max(0, Math.round(score)),
+                duration: Math.max(1, Math.round(durationSeconds)),
+                mode: "classic",
+                period: "alltime",
+            }),
+            8_000,
+            "leaderboard.submitScore",
+        );
+        return result?.accepted ? (result.rank ?? null) : null;
+    } catch (error) {
+        console.warn("[runSdk] leaderboard submit unavailable", error);
+        return null;
+    }
 }
 
 export async function readAppStorage(key: string): Promise<{ ok: boolean; value: string | null }> {
@@ -216,7 +289,8 @@ export async function showRewardedAd(placementId: string, placementName: string)
         );
         // Only a confirmed completion earned the reward — a falsy result covers
         // both "no ad shown" and "player closed early".
-        if (completed) void recordAnalytics("rewarded_ad_complete", { ad_display_id: placementId });
+        if (completed) void recordAnalytics("rewarded_ad_watched", { ad_display_id: placementId });
+        else void recordAnalytics("rewarded_ad_dismissed", { ad_display_id: placementId });
         return completed;
     } catch (error) {
         console.warn("[runSdk] rewarded ad unavailable", error);
@@ -290,7 +364,9 @@ export async function fetchShopOrderHistory(): Promise<ShopOrderHistoryResponse>
 export type HapticStyle = "light" | "medium" | "heavy" | "success" | "warning" | "error";
 
 export async function triggerHaptic(style: HapticStyle): Promise<boolean> {
-    if (capabilities.haptics) {
+    // Live read, not the boot snapshot: the system haptics setting can change
+    // mid-session and must take effect on the next trigger.
+    if (hapticsAvailableNow()) {
         const styleMap: Record<HapticStyle, HapticFeedbackStyle> = {
             light: HapticFeedbackStyle.Light,
             medium: HapticFeedbackStyle.Medium,

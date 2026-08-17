@@ -7,9 +7,11 @@ import {
     bindRunSafeArea,
     initSdk,
     recordAnalytics,
+    refreshRunCapabilities,
     registerLifecycles,
     requestHostExit,
     triggerHaptic,
+    submitRunScore,
 } from "./sdk/runSdk.ts";
 import { analytics } from "./systems/analytics/analyticsConfig.ts";
 import {
@@ -52,6 +54,10 @@ import {
 // closes the tab mid-load will ever produce. Emissions here are buffered until
 // markTransportReady() below, once the SDK transport exists.
 analytics.installErrorCapture();
+// The browser's own end-of-session signals. onQuit alone produced two
+// session_end events across the whole fleet in thirty days, because it
+// needs a clean host quit and players just close the tab.
+analytics.installSessionEndCapture();
 // Retention: arm the 24/48/72h return cadence and attribute a
 // notification-driven launch. Both are fire-and-forget — a host without
 // notification support must not delay the first playable frame.
@@ -79,6 +85,9 @@ function updateBoot(progress: number, copy: string): void {
 }
 
 function liftBootCover(): void {
+    // The game owns the screen now; the HTML watchdog must not fire behind it.
+    const watchdog = (window as unknown as { __bootWatchdog?: number }).__bootWatchdog;
+    if (watchdog !== undefined) window.clearTimeout(watchdog);
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             const cover = document.getElementById("boot-cover");
@@ -185,7 +194,7 @@ function handleEvent(event: GameEvent): void {
         audioManager.play("reward");
         haptic("success");
         ui.milestone(`CACHE #${event.cache} UNLOCKED`, `${event.kind.toUpperCase()} INBOUND`, event.kind);
-        recordAnalytics("cache_reward", { cache: event.cache, powerup: event.kind });
+        recordAnalytics("reward_claimed", { cache: event.cache, powerup: event.kind });
     } else if (event.type === "treasure_discovered") {
         audioManager.play("ui");
         ui.toast("TREASURE SIGNAL · SEARCH NEARBY");
@@ -218,6 +227,8 @@ function handleEvent(event: GameEvent): void {
         audioManager.play("warning");
         haptic("warning");
         ui.milestone(`HORDE ${event.horde}`, "SWARM BREACH");
+        // NOT run_started — a horde is a wave within a run, and there are many
+        // per run. Emitting the canonical name here would inflate run counts.
         recordAnalytics("horde_started", { horde: event.horde });
     } else if (event.type === "horde_ended") {
         audioManager.play("reward");
@@ -244,6 +255,11 @@ function handleEvent(event: GameEvent): void {
     } else if (event.type === "run_end") {
         audioManager.play("defeat");
         haptic("error");
+        // The run only ever ends by the player being overrun, so this is both
+        // the failed run and the death. RUN's core-loop query treats them as
+        // distinct beats.
+        recordAnalytics("run_failed", { outcome: event.outcome, score: event.score });
+        recordAnalytics("player_death", { cause: "overrun", score: event.score });
     }
 }
 
@@ -259,6 +275,16 @@ function persistRun(snapshot: CoreSnapshot): void {
         snapshot.cachesOpened,
     );
     void saveSystem.flush();
+    // Boards were configured but nothing ever submitted, so they read as "zero
+    // scored players". Fire-and-forget: never blocks the results flow.
+    void submitRunScore(snapshot.score, snapshot.elapsed);
+    // Canonical loop name alongside the game's own; only run_completed reaches
+    // RUN's core-loop query. run_failed already fires on the defeat path.
+    recordAnalytics("run_completed", {
+        outcome: snapshot.phase,
+        score: snapshot.score,
+        level: snapshot.level,
+    });
     recordAnalytics("run_ended", {
         outcome: snapshot.phase,
         elapsed: Math.round(snapshot.elapsed),
@@ -397,7 +423,7 @@ async function boot(): Promise<void> {
         },
         onPurchaseProduct: async (productId: CommerceProductId, placement = "outfitter") => {
             analytics.funnelStep("purchase", 2);
-            recordAnalytics("purchase_tapped", { productId, placement });
+            recordAnalytics("offer_clicked", { productId, placement });
             const outcome = await purchaseProduct(productId, placement);
             if (!outcome) return "PURCHASE CURRENTLY UNAVAILABLE";
             await refreshCommerce();
@@ -453,14 +479,14 @@ async function boot(): Promise<void> {
         },
         onMonetizationSurfaceViewed: (surfaceId) => {
             analytics.funnelStep("purchase", 1);
-            recordAnalytics("monetization_surface_viewed", {
+            recordAnalytics("store_opened", {
                 surfaceId,
                 placement: "main_menu",
                 progression: saveSystem.get().records.highestLevel,
             });
         },
         onAdOfferViewed: (baseScrap: number, status: string) => {
-            recordAnalytics("ad_offer_viewed", {
+            recordAnalytics("offer_shown", {
                 placementId: "rewarded_results_salvage",
                 adType: "rewarded",
                 rewardId: "run_salvage_bonus",
@@ -484,6 +510,9 @@ async function boot(): Promise<void> {
             void saveSystem.flush();
         },
         onAwake: () => {
+            // onAwake is the SDK's "refresh stale data" hook; a long suspend
+            // can span a settings change or a delayed host attach.
+            refreshRunCapabilities();
             void refreshServerTime();
             void refreshMonetization();
             resumeRun();
@@ -511,7 +540,7 @@ async function boot(): Promise<void> {
             `[monetization] ${monetizationPlacements.all().length} visible placements and ${monetizationProducts.all().length} products remain fail-closed until RUN catalog and LiveOps controls are activated.`,
         );
     }
-    recordAnalytics("game_loaded", {
+    recordAnalytics("game_opened", {
         version: __APP_VERSION__,
         saveSource,
         orientation: scene.getViewport().orientation,

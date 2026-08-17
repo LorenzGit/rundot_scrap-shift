@@ -244,6 +244,41 @@ export const saveSystem = {
         return { ok: true, reason: "ready", previous };
     },
 
+    /**
+     * Undo a granted-but-unsaved daily reward by DELTA against the current
+     * state, not by restoring the pre-claim snapshot: anything else the player
+     * earned between the grant and the failed flush must survive the rollback.
+     */
+    revertDailyReward(input: {
+        day: string;
+        salvage: number;
+        skinId?: SkinId;
+        previousLastClaimDay: string | null;
+        previousStreak: number;
+    }): void {
+        const claimId = `daily-reward:${input.day}`;
+        if (!state.dailyRewards.claimIds.includes(claimId)) return;
+        const salvageReward = nonNegativeInteger(input.salvage);
+        state = {
+            ...state,
+            wallet: {
+                salvage: Math.max(0, state.wallet.salvage - salvageReward),
+            },
+            cosmetics: {
+                ...state.cosmetics,
+                earnedSkinIds: input.skinId
+                    ? state.cosmetics.earnedSkinIds.filter((id) => id !== input.skinId)
+                    : state.cosmetics.earnedSkinIds,
+            },
+            dailyRewards: {
+                lastClaimDay: input.previousLastClaimDay,
+                totalClaims: Math.max(0, state.dailyRewards.totalClaims - 1),
+                streak: nonNegativeInteger(input.previousStreak),
+                claimIds: state.dailyRewards.claimIds.filter((id) => id !== claimId),
+            },
+        };
+    },
+
     restore(snapshot: GameSaveV5): void {
         state = structuredClone(snapshot);
     },

@@ -9,6 +9,7 @@ import { rewardedResultsView } from "../systems/rewardedAds.ts";
 import { saveSystem } from "../systems/save.ts";
 import type { GameProgress, GameRecords, GameSettings, SaveSource } from "../systems/save.ts";
 import { floatingStickVector } from "./touchStick.ts";
+import { analytics } from "../systems/analytics/analyticsConfig.ts";
 
 export interface UiCallbacks {
     onPlay(): void;
@@ -876,6 +877,8 @@ export class UiController {
     }
 
     private activate(name: keyof UiController["screens"]): void {
+        // Every screen change in the game funnels through here.
+        analytics.event("screen_viewed", { screen: name });
         this.deactivateAll();
         this.screens[name].classList.add("active");
         this.flow();

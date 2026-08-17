@@ -223,7 +223,7 @@ export async function testRewardedAd(onPresentationChange?: (visible: boolean) =
     }
     completedThisSession += 1;
     await saveSystem.flush();
-    recordAnalytics("reward_granted", {
+    recordAnalytics("reward_claimed", {
         placementId: RESULTS_PLACEMENT_ID,
         rewardId: "private_test_salvage",
         amount: reward,
@@ -270,7 +270,7 @@ export async function claimRewardedResultsBonus(
     }
     completedThisSession += 1;
     const saved = await saveSystem.flush();
-    recordAnalytics("reward_granted", {
+    recordAnalytics("reward_claimed", {
         placementId: RESULTS_PLACEMENT_ID,
         rewardId: placement.rewardId,
         amount: reward,

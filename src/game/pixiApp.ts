@@ -60,7 +60,8 @@ export async function createPixiApp(host: HTMLElement): Promise<Application> {
         }
     }
 
-    const rendererName = app.renderer.constructor.name.toLowerCase().includes("webgpu") ? "webgpu" : "webgl";
+    // renderer.name is the literal backend string; constructor.name breaks under minification.
+    const rendererName = app.renderer.name.toLowerCase().includes("webgpu") ? "webgpu" : "webgl";
     if (rendererName === "webgl" && rendererReason === "WEBGPU ACTIVE") {
         rendererReason = "PIXI SELECTED WEBGL";
     }
