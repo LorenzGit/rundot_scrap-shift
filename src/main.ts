@@ -12,6 +12,7 @@ import {
     requestHostExit,
     triggerHaptic,
     submitRunScore,
+    showContextualLikePrompt,
 } from "./sdk/runSdk.ts";
 import { analytics } from "./systems/analytics/analyticsConfig.ts";
 import {
@@ -329,6 +330,8 @@ function persistRun(snapshot: CoreSnapshot): void {
     void submitRunScore(snapshot.score, snapshot.elapsed);
     // Canonical loop name alongside the game's own; only run_completed reaches
     // RUN's core-loop query. run_failed already fires on the defeat path.
+    // Ask for the like on a win. The wrapper owns the policy (3 wins, once ever).
+    void showContextualLikePrompt();
     recordAnalytics("run_completed", {
         outcome: snapshot.phase,
         score: snapshot.score,
